@@ -1,10 +1,10 @@
 import 'dart:io';
 
+import 'package:message_app/widgets/user_image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:message_app/widgets/user_image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 final _firebase = FirebaseAuth.instance;
 
@@ -23,20 +23,18 @@ class _AuthScreenState extends State<AuthScreen> {
   var _isLogin = true;
   var _enteredEmail = '';
   var _enteredPassword = '';
+  var _enteredUsername = '';
   File? _selectedImage;
   var _isAuthenticating = false;
-  var _enteredUsername = '';
 
   void _submit() async {
     final isValid = _form.currentState!.validate();
 
-    if (!isValid) {
+    if (!isValid || !_isLogin && _selectedImage == null) {
+      // show error message ...
       return;
     }
 
-    if (!_isLogin && _selectedImage == null) {
-      return;
-    }
     _form.currentState!.save();
 
     try {
@@ -45,14 +43,10 @@ class _AuthScreenState extends State<AuthScreen> {
       });
       if (_isLogin) {
         final userCredentials = await _firebase.signInWithEmailAndPassword(
-          email: _enteredEmail,
-          password: _enteredPassword,
-        );
+            email: _enteredEmail, password: _enteredPassword);
       } else {
         final userCredentials = await _firebase.createUserWithEmailAndPassword(
-          email: _enteredEmail,
-          password: _enteredPassword,
-        );
+            email: _enteredEmail, password: _enteredPassword);
 
         final storageRef = FirebaseStorage.instance
             .ref()
@@ -72,7 +66,9 @@ class _AuthScreenState extends State<AuthScreen> {
         });
       }
     } on FirebaseAuthException catch (error) {
-      if (error.code == 'email-already-in-use') {}
+      if (error.code == 'email-already-in-use') {
+        // ...
+      }
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -115,13 +111,14 @@ class _AuthScreenState extends State<AuthScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (!_isLogin)
-                            UserImagePicker(onPickImage: (pickedImage) {
-                              _selectedImage = pickedImage;
-                            }),
+                            UserImagePicker(
+                              onPickImage: (pickedImage) {
+                                _selectedImage = pickedImage;
+                              },
+                            ),
                           TextFormField(
                             decoration: const InputDecoration(
-                              labelText: 'Email Address',
-                            ),
+                                labelText: 'Email Address'),
                             keyboardType: TextInputType.emailAddress,
                             autocorrect: false,
                             textCapitalization: TextCapitalization.none,
@@ -129,8 +126,9 @@ class _AuthScreenState extends State<AuthScreen> {
                               if (value == null ||
                                   value.trim().isEmpty ||
                                   !value.contains('@')) {
-                                return 'Please enter a valid email addres';
+                                return 'Please enter a valid email address.';
                               }
+
                               return null;
                             },
                             onSaved: (value) {
@@ -139,9 +137,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                           if (!_isLogin)
                             TextFormField(
-                              decoration: const InputDecoration(
-                                labelText: 'Username',
-                              ),
+                              decoration:
+                                  const InputDecoration(labelText: 'Username'),
                               enableSuggestions: false,
                               validator: (value) {
                                 if (value == null ||
@@ -156,9 +153,8 @@ class _AuthScreenState extends State<AuthScreen> {
                               },
                             ),
                           TextFormField(
-                            decoration: const InputDecoration(
-                              labelText: 'Password',
-                            ),
+                            decoration:
+                                const InputDecoration(labelText: 'Password'),
                             obscureText: true,
                             validator: (value) {
                               if (value == null || value.trim().length < 6) {
@@ -171,6 +167,8 @@ class _AuthScreenState extends State<AuthScreen> {
                             },
                           ),
                           const SizedBox(height: 12),
+                          if (_isAuthenticating)
+                            const CircularProgressIndicator(),
                           if (!_isAuthenticating)
                             ElevatedButton(
                               onPressed: _submit,
@@ -181,8 +179,6 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                               child: Text(_isLogin ? 'Login' : 'Signup'),
                             ),
-                          if (_isAuthenticating)
-                            const CircularProgressIndicator(),
                           if (!_isAuthenticating)
                             TextButton(
                               onPressed: () {
@@ -191,8 +187,8 @@ class _AuthScreenState extends State<AuthScreen> {
                                 });
                               },
                               child: Text(_isLogin
-                                  ? 'Create an accaunt'
-                                  : 'I already have an accaunt'),
+                                  ? 'Create an account'
+                                  : 'I already have an account'),
                             ),
                         ],
                       ),
